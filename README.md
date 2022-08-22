@@ -13,3 +13,5 @@ The goal of this assignment is to learn how to use git in the terminal as well a
 The other goal was to download R and R studio
 
 The final goal was to learn the basics of the terminal
+
+I tried using git in the past on my own and it was a failure
