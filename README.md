@@ -15,3 +15,5 @@ The other goal was to download R and R studio
 The final goal was to learn the basics of the terminal
 
 I tried using git in the past on my own and it was a failure
+
+This lesson was helpful
