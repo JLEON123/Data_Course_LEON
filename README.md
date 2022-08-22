@@ -9,3 +9,5 @@ This README.md file contains info about assignments
 This will be assignment number one
 
 The goal of this assignment is to learn how to use git in the terminal as well as github
+
+The other goal was to download R and R studio
