@@ -1,0 +1,24 @@
+Idea #1 for the final project (not sure if it is feasible) Mangrove Metagenome analysis
+
+We briefly talked about using the mangrove metagenome research results as something that I could use for the final project in this class.  I still like that idea but there are several questions I have before committing to this one.
+
+- Will we have completed everything in the supercomputer in time?
+- Since we are focused on genome annotation instead of binning taxonomy, will we be producing any graphs related to taxonomy? I remember you saying we already have that information but I'm unsure.
+- I think we will be producing graphs that visualize how often important genes (those that are mapped to the KEGG pathways) show up in our reads.  In other words, we will be showing the percentage of reads that contain a specific gene.
+- I'm sure I'll get more info on this as we go along in the research but as of now, I'm unsure of what and how we want to visualize after we have mapped against the KEGG pathway.
+
+The data for this project will come from the analyses we perform using the supercomputer.  The data will probably be in a .csv file with several columns.  The first column would be the sample name, a second column would specify if it were a leaf, sediment, or pneumatophore sample and the rest would be a gene name and the value would either be yes(1) if the gene was found in that sample or no(0) if the gene wasn't found in that sample.
+
+I did not create fake data or make a plot for this idea because I want to be sure I have the right idea about what we're doing
+
+
+
+I would prefer this route for my final project but if it isn't going to work (mainly if we don't have things ready in time) then I have another idea that could be cool and fairly easy to get the data.
+
+Idea #2 Biology Career information
+
+I want to gather information about careers in biology-related fields and produce statistics and visuals about them.  The reason I like this idea is that I have no clue what I want to do as a career after I graduate grad school (or UVU if there are nice paying jobs). I think there are many others in the same boat as me so this could help.
+
+For the data, I'm thinking of going through a bunch of job boards to find information on job type, salary, required education, and any other qualifications and then organizing this data into a csv file.  I could make a bunch of informative graphs that show what jobs are looking for and what types of degrees are generally required for a type of job.
+
+I did create fake data and made a graph for this idea
