@@ -2,7 +2,7 @@
 library(tidyverse)
 
 # Load in data
-covid <- read.csv("./exam_1/cleaned_covid_data.csv")
+covid <- read.csv("./data_course_LEON/exam_1/cleaned_covid_data.csv")
 
 # Sub-setting the data to just get the states that begin with "A"
 A_states <- subset(covid, grepl("^A", Province_State))
