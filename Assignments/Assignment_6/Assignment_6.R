@@ -1,0 +1,79 @@
+# Loading libraries
+library(tidyverse)
+library(gganimate)
+
+# Reading in untidy data set
+untidy <- read_csv("../../Data/BioLog_Plate_Data.csv")
+
+# Changing Hr_* column names to represent numbers (still strings)
+new_untidy <- 
+  untidy %>% 
+  rename(`24` = Hr_24,
+         `48` = Hr_48,
+         `144` = Hr_144)
+
+# Making the data tidy
+tidy <- 
+  new_untidy %>% 
+  pivot_longer(names_to = "Time",
+             values_to = "Absorbance",
+             cols = `24`:`144`)
+  
+# Changing the character time values to numeric values
+tidy$Time <- as.numeric(tidy$Time)
+
+# Creating a new column where the value = FALSE if the `Sample ID` doesn't start with 'Soil'
+# Value is = to TRUE if the `Sample ID` does start with 'Soil'
+tidy$Type = grepl("^Soil", x = tidy$`Sample ID`)
+
+# Changing the FALSE and TRUE statements to either 'Water' or 'Soil'
+tidy_types <- 
+  tidy %>% 
+  mutate(Type = if_else(Type == 1, "Soil", "Water"))
+#^ Could not figure out how to do this without an if_else statement ^#
+
+# Creating a plot that compares the absorbance values of water vs soil samples at 0.1 dilution
+# Has a bunch of warnings and takes forever to load but I think it's identical to yours
+dilution_.1 <- 
+  tidy_types %>% 
+  filter(Dilution == 0.1) %>% 
+  group_by(Substrate) %>% 
+  summarize(Absorbance = Absorbance,
+            Substrate = Substrate,
+            Type = Type,
+            Time = Time) %>% 
+  unique.data.frame() %>% 
+  ggplot(aes(x = Time, y = Absorbance, color = Type)) +
+  geom_blank() +
+  geom_smooth(method = "loess", se = FALSE, na.rm = TRUE) +
+  ylim(0,2) +
+  facet_wrap(~Substrate) +
+  theme_minimal() + 
+  labs(title = "Just dilution 0.1")
+
+dilution_.1 #print the plot
+ggsave(filename = "assignment_6.pdf",plot = dilution_.1,width = 20,height = 14,dpi = 300, device = "pdf") # Saving the plot for convenience
+
+# Creating an animated plot that shows the mean absorbance values for all four samples
+# Shows just the values for Itaconic Acid
+# Takes a minute to load and has several messages but works!
+Itaconic_plot <- 
+  tidy_types %>% 
+  filter(Substrate == "Itaconic Acid") %>% 
+  group_by(Time, Dilution, `Sample ID`) %>% 
+  summarize(Mean_absorbance = mean(Absorbance),
+            Absorbance = Absorbance,
+            Time = Time,
+            `Sample ID` = `Sample ID`,
+            Dilution = Dilution,
+            Rep = Rep,
+            Well = Well) %>% 
+  ggplot(aes(x = Time, y = Mean_absorbance, color = `Sample ID`)) +
+  geom_line() +
+  facet_wrap(~Dilution) +
+  theme_minimal() +
+  transition_reveal(Time)
+
+Itaconic_plot # printing the plot
+
+anim_save(filename = "assignment_6_animate", animation = Itaconic_plot) # Saving for convenience
