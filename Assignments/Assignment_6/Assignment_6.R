@@ -3,7 +3,7 @@ library(tidyverse)
 library(gganimate)
 
 # Reading in untidy data set
-untidy <- read_csv("../../Data/BioLog_Plate_Data.csv")
+untidy <- read_csv("./BioLog_Plate_Data.csv")
 
 # Changing Hr_* column names to represent numbers (still strings)
 new_untidy <- 
@@ -52,7 +52,7 @@ dilution_.1 <-
   labs(title = "Just dilution 0.1")
 
 dilution_.1 #print the plot
-ggsave(filename = "assignment_6.pdf",plot = dilution_.1,width = 20,height = 14,dpi = 300, device = "pdf") # Saving the plot for convenience
+#ggsave(filename = "assignment_6.pdf",plot = dilution_.1,width = 20,height = 14,dpi = 300, device = "pdf") # Saving the plot for convenience
 
 # Creating an animated plot that shows the mean absorbance values for all four samples
 # Shows just the values for Itaconic Acid
@@ -76,4 +76,4 @@ Itaconic_plot <-
 
 Itaconic_plot # printing the plot
 
-anim_save(filename = "assignment_6_animate", animation = Itaconic_plot) # Saving for convenience
+#anim_save(filename = "assignment_6_animate", animation = Itaconic_plot) # Saving for convenience
