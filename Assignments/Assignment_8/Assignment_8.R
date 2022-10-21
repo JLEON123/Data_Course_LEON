@@ -137,6 +137,7 @@ mod4 <- glm(data = shroom_growth,
 compare_performance(mod1, mod2, mod3, mod4, rank = TRUE)
 compare_performance(mod1, mod2, mod3, mod4) %>% plot()
 
+summary(mod4)
 # Visual test between model 3 and 4
 gather_predictions(shroom_growth, mod3, mod4) %>% 
   ggplot(aes(x = Humidity, y = pred, fill = Light)) +
@@ -183,3 +184,18 @@ ggplot(fullpreds,aes(x=Humidity, y=pred, color=PredictionType)) +
   geom_boxplot(aes(y=GrowthRate),color="Black", alpha =.5) +
   theme_minimal()
   
+# Checking for non-linear relationships
+shroom_non_linear <- read_csv("mushroom_growth.csv")
+ggplot(data = shroom_non_linear, 
+       aes(x = Nitrogen, 
+           y = GrowthRate, 
+           color = Species)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+mod5 <- gam(data = shroom_non_linear,
+            formula = GrowthRate ~ Nitrogen * Species)
+
+add_predictions(shroom_non_linear, mod5) %>% 
+  ggplot(aes(x = Nitrogen, y = pred, color = Species)) + 
+  geom_point()
