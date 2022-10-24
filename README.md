@@ -1,4 +1,4 @@
 # data_course_LEON
 
-This README file contains my assignments and exams for BIOL3100
+This repository contains my assignments and exams for BIOL 3100
 
