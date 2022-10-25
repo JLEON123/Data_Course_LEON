@@ -1,24 +1,12 @@
-# data_course_LEONThis README file contains information about my uploaded assignments
+# Data Analysis Course - Utah Valley University
 
-trying out a newline character
+This site serves as a repository for all class material.
 
-Ignore the ugly title
+The course [*website*](https://gzahn.github.io/data-course/) gives a tentative outline of the weekly topics to be covered. It also has assignments and plentiful links to outside resources to help you learn.
 
-This README.md file contains info about assignments
+The code and data we use in class will be posted here so you have access to it.
+Additionally, detailed assignment instructions will be here as they become available (see the Assignments directory).
+*All assignments will be turned in on Canvas as well as your personal GitHub repository.*
 
-This will be assignment number one
+The file *Syllabus.pdf* is the official course syllabus.
 
-The goal of this assignment is to learn how to use git in the terminal as well as github
-
-The other goal was to download R and R studio
-
-The final goal was to learn the basics of the terminal
-
-I tried using git in the past on my own and it was a failure
-
-This lesson was helpful
-
-one extra change for good luck
-
-Add something
-2nd test
