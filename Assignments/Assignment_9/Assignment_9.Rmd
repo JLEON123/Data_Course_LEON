@@ -1,44 +1,238 @@
 ---
+title: "Analysis of Graduate School Admissions"
+author: "Josh Leon - joshuarleon0123@gmail.com"
+date: "2022-10-26"
 output: 
 html_document:
-  number_sections=TRUE
-pagetitle: Assignment_9
+  toc: true
+  toc_depth: 3
+  toc_float: true
 ---
 
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE, }
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, fig.align='center')
+library(tidyverse)
+library(easystats)
+library(modelr)
+library(broom)
+library(kableExtra)
+theme_set(theme_bw())
 ```
 
-# **Assignment 9**
+**I will be analyzing and modeling predictors for graduate school admission outcomes**
 
-In this assignment, you will use R (within R-Studio) to:
+# **Outline**
++ Loading and cleaning the data set
++ Conducting exploratory analyses and producing informative figures
++ Building and testing models
++ Drawing conclusions about the data
+
+***
+
+```{r, echo=FALSE, message=FALSE}
+df <- read_csv("GradSchool_Admissions.csv")
+df$admit <- as.logical(df$admit)
+```
+
+## Data Set
+A quick look at the data set:
+```{r, comment='-'}
+df %>% glimpse()
   
-+ Load and clean a real data set
-+ Conduct exploratory analyses, including informative figures
-+ Build and test appropriate models
-+ Draw conclusions about your data
-+ Combine all of the above into a well-documented R-Markdown report and export (knit) it into an HTML file
+```
+| Variable | Description |
+| ------ | ------ |
+| **admit** | A boolean value indicating whether the person was admitted |  
+| **gre** | The person's Graduate Record Examinations (GRE) score | 
+| **gpa** | The person's Grade Point Average (GPA) | 
+| **rank** | The rank of the person's undergraduate institution with 1 being _Top Tier_ | 
+```{r}
+df %>% GGally::ggpairs()
+```
+<br>
+The goal is to determine the effect of the three predictors on admission result:  
 
-**All file paths should be relative, starting from *your* Assignment_9 directory!!**
+  1. GRE score  
+  2. GPA  
+  3. Undergraduate institution rank  
 
-**This means that you need to create a new R-Project named "Assignment_9.Rproj" in your Assignment_9 directory, and work from scripts within that.**
+From the _ggpairs_ plot, I can see that GRE scroes are positivly correlated with GPAs.  Institution rank is negativly correlated with both GRE scores and GPAs.    
+It's difficult to determine if anything else is significant from the _ggpairs_ plot. I'll focus on a single plot at a time to display these relationships better.
+
+***
+
+## Exploring Relationships
+
+### _Undergraduate Institution Rank_
+```{r, echo=FALSE}
+df_count <- 
+  df %>% 
+  group_by(rank, admit) %>% 
+  summarize(n = n())
+```
+
+The proportion of those accepted into graduate school decreases as the rank of their undergraduate institution decreases.  People from top-tier schools get accepted 54% of the time while people from _bottom-tier_ schools only get accepted 18% of the time.
+```{r}
+df %>% 
+  ggplot(aes(x=rank, fill=admit)) + 
+  geom_bar(position="fill") +
+  geom_text(data = df_count %>% filter(admit == 'TRUE'),
+            aes(x = rank, y = 0.05, label = n)) +
+  geom_text(data = df_count %>% filter(admit == 'FALSE'),
+            aes(x = rank, y = 0.95, label = n)) +
+  labs(y = 'count') +
+  scale_fill_manual(values = c('firebrick', 'forestgreen'))
+  
+```
+
+***
+
+### _GPA and GRE_
+The Black trend line represents the overall relationship between GRE score and GPA. It appears that those people with a low GPA AND a low GRE score are more likely to not be accepted into graduate school.  When GPAs are greater than 3.5 and GRE scores are near 600, there isn't a obvious difference in whether that person will be accepted into graduate schools.
+```{r}
+df %>% 
+  ggplot(aes(x = gpa, y = gre, color = admit)) +
+  geom_point() + 
+  geom_smooth(method = "glm", se = FALSE) +
+  geom_smooth(aes(x = gpa, y = gre), color = 'black', method = "glm", se = FALSE) +
+  scale_color_manual(values = c('firebrick', 'forestgreen'))
+```
+```{r, echo=FALSE}
+df_false <- 
+  df %>% 
+  filter(admit == 'FALSE')
+
+mean_gpa_false <- round(mean(df_false$gpa), 2)
+mean_gre_false <- signif(mean(df_false$gre), 3)
+
+df_true <- 
+  df %>% 
+  filter(admit == 'TRUE')
+
+mean_gpa_true <- round(mean(df_true$gpa), 2)
+mean_gre_true <- signif(mean(df_true$gre), 3)
+```
+
+<div align="center">**When looking at just the GPA numbers, a slight difference can be seen in the average for those accepted (`r mean_gpa_true`) and those not accepted (`r mean_gpa_false`).**
+```{r, echo=FALSE}
+df %>% 
+  ggplot(aes(x = admit, y = gpa, fill = admit)) +
+  geom_boxplot(show.legend = FALSE) +
+  geom_jitter(alpha = 0.3, show.legend = FALSE) +
+  scale_fill_manual(values = c('firebrick', 'forestgreen'))
+```
 
 
-## **For credit...**
+**A difference in the average GRE scores (`r mean_gre_true - mean_gre_false`) can be seen between those accepted and those not accepted**
+```{r, echo=FALSE}
+df %>% 
+  ggplot(aes(x = admit, y = gre, fill = admit)) +
+  geom_boxplot(show.legend = FALSE) +
+  geom_jitter(alpha = 0.3, show.legend = FALSE) +
+  scale_fill_manual(values = c('firebrick', 'forestgreen'))
+```
 
-1.  Push a completed version of your Rproj and R-markdown file (details at end of this assignment) to GitHub
-2.  Your score will also depend on your analyses and presentation of your final report
 
-____________
+<div align="left">After looking at the plots, the rank of the undergraduate institution appears to be the most influential factor. I'll make a few models next to see if this claim is supported.
 
-# Your tasks:
+***
+</div>
+## Model testing
+```{r}
+mod1 <- 
+  glm(data = df,
+      formula = admit ~ rank,
+      family = 'binomial')
 
-+ Use the data set "/Data/GradSchool_Admissions.csv"
-+ You will explore and model the predictors of graduate school admission
-  - the "admit" column is coded as 1=success and 0=failure (that's binary, so model appropriately)
-  - the other columns are the GRE score, the GPA, and the rank of the undergraduate institution, where I is "top-tier."
-+ Document your data explorations, figures, and conclusions in a reproducible R-markdown report
-+ That means I want to see, in your html report, your process of model evaluation and selection. Here's an [example](https://gzahn.github.io/data-course/Repository/Assignments/Assignment_9/example.html){target="_blank"}
-+ Upload your **self-contained** R project, including knitted HTML report, to GitHub in *your* Assignment_9 directory
+mod2 <- 
+  glm(data = df,
+      formula = admit ~ rank * gpa,
+      family = 'binomial')
+
+mod3 <- 
+  glm(data = df,
+      formula = admit ~ rank * gre,
+      family = 'binomial')
+
+mod4 <- 
+  glm(data = df,
+      formula = admit ~ gpa * gre,
+      family = 'binomial')
+mod5 <- 
+  glm(data = df,
+      formula = admit ~ rank * gpa * gre,
+      family = 'binomial')
+```
+
+<br>
+
+<div align ="center">**Comparing these models show that mod2 and mod5 perform the best**
+```{r,echo=FALSE}
+comparison <- compare_performance(mod1,mod2,mod3,mod4,mod5, rank = TRUE)
+comparison %>% 
+  kable() %>% 
+  kable_minimal()
+```
+```{r,echo=FALSE}
+comparison %>% plot()
+```
+
+<div align ="left">The comparison plot is messy so I'll add a model built by the `stepAIC` function from the `MASS` library to the comparison.
+```{r}
+step <- MASS::stepAIC(mod5, trace = 0)
+mod6 <- 
+  glm(data = df,
+      formula = step$formula,
+      family = 'binomial')
+```
+The formula for the new step model is `admit ~ rank + gpa + gre + gpa:gre`
+
+<br>
+
+<div align ="center">**Comparing the six models shows that the new `stepAIC` model perfroms best**
+```{r,echo=FALSE}
+mod_comparison <- compare_performance(mod1,mod2,mod3,mod4,mod5,mod6, rank = TRUE)
+mod_comparison %>% 
+  kable() %>% 
+  kable_minimal()
+
+```
+```{r,echo=FALSE}
+mod_comparison %>% plot()
+```
+<div align ="left">The plot is still fairly messy, I'll remove the 3 lowest performing plots (mod1, mod3, and mod4) in the following comparison to get a better picture.
+
+```{r}
+final_comparison <- compare_performance(mod2, mod5, mod6, rank = TRUE)
+final_comparison %>% 
+  kable() %>% 
+  kable_minimal()
+```
+```{r, echo=FALSE}
+final_comparison %>% plot()
+```
+Now that the plot is readable, I fell good about mod6 being the best performing model. I'll gather predictions to test the top three models
+
+***
+</div>
+## Model Predictions
+```{r}
+add_predictions(data = df, mod6, type = 'response') %>% 
+  ggplot(aes(x = pred, y = admit, color = admit)) +
+  geom_point(show.legend = FALSE) +
+  scale_color_manual(values = c('firebrick', 'forestgreen')) +
+  labs(x = 'Prediction')
+```
+
+We can see a slight S curve here. It's not great but the TRUEs tend to clump toward the higher end of the prediction while the opposite is true for the FAlSEs.
+
+<div align="center">**Model 5 produces a similar plot**
+```{r, echo=FALSE}
+add_predictions(data = df, mod5, type = 'response') %>% 
+  ggplot(aes(x = pred, y = admit, color = admit)) +
+  geom_point(show.legend = FALSE) +
+  scale_color_manual(values = c('firebrick', 'forestgreen')) +
+  labs(x = 'Prediction')
+```
 
