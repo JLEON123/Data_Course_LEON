@@ -13,6 +13,7 @@ html_document:
 ```{r setup, include=FALSE, }
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, fig.align='center')
 library(tidyverse)
+library(patchwork)
 library(easystats)
 library(modelr)
 library(broom)
@@ -39,7 +40,6 @@ df$admit <- as.logical(df$admit)
 A quick look at the data set:
 ```{r, comment='-'}
 df %>% glimpse()
-  
 ```
 | Variable | Description |
 | ------ | ------ |
@@ -57,7 +57,7 @@ The goal is to determine the effect of the three predictors on admission result:
   2. GPA  
   3. Undergraduate institution rank  
 
-From the _ggpairs_ plot, I can see that GRE scroes are positivly correlated with GPAs.  Institution rank is negativly correlated with both GRE scores and GPAs.    
+From the _ggpairs_ plot, I can see that GRE scores are positively correlated with GPAs.  Institution rank is negatively correlated with both GRE scores and GPAs.    
 It's difficult to determine if anything else is significant from the _ggpairs_ plot. I'll focus on a single plot at a time to display these relationships better.
 
 ***
@@ -89,14 +89,15 @@ df %>%
 ***
 
 ### _GPA and GRE_
-The Black trend line represents the overall relationship between GRE score and GPA. It appears that those people with a low GPA AND a low GRE score are more likely to not be accepted into graduate school.  When GPAs are greater than 3.5 and GRE scores are near 600, there isn't a obvious difference in whether that person will be accepted into graduate schools.
+The Black trend line represents the overall relationship between GRE score and GPA. It appears that those people with a low GPA AND a low GRE score are more likely to not be accepted into graduate school. For rank 1 and 4 schools, there doesn't appear to be a correlation between GPA and GRE score for students who were accepted into a graduate school. For all ranks, the trend line for those who weren't accepted into a graduate school closely follows the overall correlation between GPA and GRE scores.
 ```{r}
 df %>% 
   ggplot(aes(x = gpa, y = gre, color = admit)) +
   geom_point() + 
   geom_smooth(method = "glm", se = FALSE) +
   geom_smooth(aes(x = gpa, y = gre), color = 'black', method = "glm", se = FALSE) +
-  scale_color_manual(values = c('firebrick', 'forestgreen'))
+  scale_color_manual(values = c('firebrick', 'forestgreen')) +
+  facet_wrap(~rank)
 ```
 ```{r, echo=FALSE}
 df_false <- 
@@ -178,7 +179,7 @@ comparison %>%
 comparison %>% plot()
 ```
 
-<div align ="left">The comparison plot is messy so I'll add a model built by the `stepAIC` function from the `MASS` library to the comparison.
+<div align ="left">The comparison plot is messy so I'll remove the bottom three preforming models `(mod1, mod3, and mod4)`. However, I'd still like to add a model built by the `stepAIC` function from the `MASS` library to the comparison.
 ```{r}
 step <- MASS::stepAIC(mod5, trace = 0)
 mod6 <- 
@@ -190,18 +191,8 @@ The formula for the new step model is `admit ~ rank + gpa + gre + gpa:gre`
 
 <br>
 
-<div align ="center">**Comparing the six models shows that the new `stepAIC` model perfroms best**
-```{r,echo=FALSE}
-mod_comparison <- compare_performance(mod1,mod2,mod3,mod4,mod5,mod6, rank = TRUE)
-mod_comparison %>% 
-  kable() %>% 
-  kable_minimal()
 
-```
-```{r,echo=FALSE}
-mod_comparison %>% plot()
-```
-<div align ="left">The plot is still fairly messy, I'll remove the 3 lowest performing plots (mod1, mod3, and mod4) in the following comparison to get a better picture.
+<div align ="left">Comparing these three models shows that `mod6` is probably the best preforming model. However, I'll use both `mod6` and `mod5` to make predictions.
 
 ```{r}
 final_comparison <- compare_performance(mod2, mod5, mod6, rank = TRUE)
@@ -212,27 +203,328 @@ final_comparison %>%
 ```{r, echo=FALSE}
 final_comparison %>% plot()
 ```
-Now that the plot is readable, I fell good about mod6 being the best performing model. I'll gather predictions to test the top three models
 
 ***
-</div>
+
+
+
 ## Model Predictions
+
+Graphing the models against the predictions doesn't seem to show much difference. I'll create fake data to test my models next.
+  
 ```{r}
-add_predictions(data = df, mod6, type = 'response') %>% 
+df %>% 
+  gather_predictions(mod5, mod6, type = 'response') %>% 
   ggplot(aes(x = pred, y = admit, color = admit)) +
-  geom_point(show.legend = FALSE) +
-  scale_color_manual(values = c('firebrick', 'forestgreen')) +
-  labs(x = 'Prediction')
+  geom_point(show.legend = FALSE,) +
+  facet_wrap(~model) +
+  scale_color_manual(values = c('firebrick', 'forestgreen'))
 ```
 
-We can see a slight S curve here. It's not great but the TRUEs tend to clump toward the higher end of the prediction while the opposite is true for the FAlSEs.
+<br>
 
-<div align="center">**Model 5 produces a similar plot**
+#### *Acceptance prediction differences between low performing and high performing students*
+
+To start, I'll make predictions by creating fake data that compares a person with low GRE scores AND a low GPA to a person with high GRE scores AND a high GPA from each undergraduate institution rank level.  I'll be using the 1st quartile and the 3rd quartile numbers from each rank to represent the _Low_ and the _High_ scores.
 ```{r, echo=FALSE}
-add_predictions(data = df, mod5, type = 'response') %>% 
-  ggplot(aes(x = pred, y = admit, color = admit)) +
-  geom_point(show.legend = FALSE) +
-  scale_color_manual(values = c('firebrick', 'forestgreen')) +
-  labs(x = 'Prediction')
+stats <- df %>% 
+  filter(rank == 1) %>% 
+  select(gre, gpa) %>% 
+  summary() %>% 
+  data.frame()
+stats$Var1 = 1
+stats2 <- df %>% 
+  filter(rank == 2) %>% 
+  select(gre, gpa) %>% 
+  summary() %>% 
+  data.frame()
+stats2$Var1 = 2
+
+stats3 <- df %>% 
+  filter(rank == 3) %>% 
+  select(gre, gpa) %>% 
+  summary() %>% 
+  data.frame()
+stats3$Var1 = 3
+
+stats4 <- df %>% 
+  filter(rank == 4) %>% 
+  select(gre, gpa) %>% 
+  summary() %>% 
+  data.frame()
+stats4$Var1 = 4
+
+stat1_2 <- full_join(stats, stats2)
+stat1_2_3 <- full_join(stat1_2, stats3)
+full_stats <- full_join(stat1_2_3, stats4)
+full_stats$Var2 <- str_trim(full_stats$Var2, 'both')
+
+full_stats <- 
+  full_stats %>% 
+  separate(Freq, into = c("rating", "value"), sep = ":")
+
+full_stats$rating <- str_trim(full_stats$rating, 'both')
+
+
+full_stats <- 
+  full_stats %>% 
+  rename(rank = Var1)
+
+clean_stats <- 
+  full_stats %>% 
+  filter(rating %in% c('1st Qu.', '3rd Qu.')) %>% 
+  pivot_wider(names_from = Var2,
+              values_from = value)
+
+clean_stats$gpa <- round(as.numeric(clean_stats$gpa), 2)
+clean_stats$gre <- signif(as.numeric(clean_stats$gre), 3)
+clean_stats$Person <- 1:8
+clean_stats$rating <- c('Low', 'High','Low', 'High','Low', 'High','Low', 'High')
+
 ```
 
+```{r, echo=FALSE}
+clean_stats[,c(5,1,2,3,4)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+<br>
+ 
+The predictions made using `mod6` show that a person coming from a rank **1** undergraduate institution who has a **high** gpa AND a **high** gre score has the best chance of being accepted into a graduate school at 60.24% (Person #2).  As expected, a person coming from a rank **4** undergraduate institution who has a **low** gpa AND a **low** gre score has the worst chance of being accepted into graduate school at 9.42% (Person #7).  
+```{r, echo=FALSE, comment=''}
+Prediction <- 
+  predict(mod6,
+        clean_stats,
+        type = 'response')
+
+Pred_view <- as.data.frame(round(Prediction * 100, 2))
+Pred_view$Person <- 1:8
+Pred_view <- 
+  Pred_view %>% 
+  rename(Prediction = `round(Prediction * 100, 2)`)
+Pred_view[,c(2,1)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+<br>
+
+<div align ="center">**The predictions from `mod5` are very similar to those of `mod6`**
+</div>
+```{r, echo=FALSE, comment=''}
+Prediction2 <- 
+  predict(mod5,
+        clean_stats,
+        type = 'response')
+
+Pred_view2 <- as.data.frame(round(Prediction2 * 100, 2))
+Pred_view2$Person <- 1:8
+Pred_view2 <- 
+  Pred_view2 %>% 
+  rename(Prediction = `round(Prediction2 * 100, 2)`)
+Pred_view2[,c(2,1)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+<br>
+To reduce redundancy, I'll just be using `mod6` for the remainder of this analysis.
+
+<br>
+
+An increase in the chance of being accepted to a graduate school can be seen as both GPA and GRE increase.  The prediction increases as school rank increases.
+```{r, echo=FALSE}
+p1 <- 
+  add_predictions(df, mod6, type = 'response') %>% 
+  ggplot(aes(x=gpa, y =pred, color = factor(rank))) +
+  geom_point() + 
+  geom_smooth(show.legend = FALSE, method = 'glm', se = FALSE) +
+  labs(color = 'rank') +
+  scale_color_viridis_d()
+
+p2 <- 
+  add_predictions(df, mod6, type = 'response') %>% 
+  ggplot(aes(x=gre, y =pred, color = factor(rank))) +
+  geom_point(show.legend = FALSE) + 
+  geom_smooth(show.legend = FALSE, method = 'glm', se = FALSE) +
+  labs(color = 'rank') +
+  scale_color_viridis_d()
+
+p1 + p2
+```
+
+
+_____
+
+
+#### *Acceptance predictions based on either just GRE score or just GPA*
+
+Now, I'll alter the fake data so that GPAs are consistent while GRE scores are either low, average, or high.  I'll also make a data set that is the opposite, GRE scores are consistent while GPAs are either low, average or high. I'll be using the overall mean from the data set for the _consistent values_ and I will use the minimum, mean, and maximum numbers from each rank to represent the _Low_, _Average_, and the _High_ scores.
+
+
+```{r, echo=FALSE}
+con_gpa <- 
+  full_stats %>% 
+  filter(rating %in% c('Min.', 'Mean', 'Max.')) %>% 
+  pivot_wider(names_from = Var2,
+              values_from = value)
+con_gpa$gpa <- round(mean(df$gpa),2)
+con_gpa$rating <- c('Low GRE score', 'Average GRE score', 'High GRE score',
+                    'Low GRE score', 'Average GRE score', 'High GRE score',
+                    'Low GRE score', 'Average GRE score', 'High GRE score',
+                    'Low GRE score', 'Average GRE score', 'High GRE score')
+con_gpa$gre <- signif(as.numeric(con_gpa$gre), 3)
+con_gpa$Person <- 1:12
+```
+
+<br>
+
+<div align='center'>The mean GPA used for all students in this fake data set is **`r round(mean(df$gpa), 2)`**
+
+</div>
+
+```{r, echo=FALSE}
+con_gpa[,c(5,1,2,3)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+<br>
+
+When GPAs are all the same, the predictions made show that the person coming from a rank **1** undergraduate institution who had a **high** GRE score has the best chance of being accepted into a graduate school at 63.19% (Person #3).  As expected, the person coming from a rank **4** undergraduate institution who had a **low** GRE score has the worst chance of being accepted into graduate school at 8.79% (Person #10).  
+
+```{r, echo=FALSE, comment=''}
+Prediction3 <- 
+  predict(mod6,
+        con_gpa,
+        type = 'response')
+
+Pred_view3 <- as.data.frame(round(Prediction3 * 100, 2))
+Pred_view3$Person <- 1:12
+Pred_view3 <- 
+  Pred_view3 %>% 
+  rename(Prediction = `round(Prediction3 * 100, 2)`)
+Pred_view3[,c(2,1)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+It is important to note that Person #9 and #12 both had high GRE scores but have a predicted value less than person #1 who had a low GRE score.  Person #9 is from a rank **3** undergraduate institution and person #12 is from a rank **4** while person #1 is from a rank **1** institution.  This indicates that the rank of the person's undergraduate institution is an important predictor in acceptance to graduate schools.  
+
+<br>
+
+<div align='center'>**GRE scores appear to be less important as a predictor as the rank of the institution decreases**  
+
+</div>
+
+```{r, echo=FALSE}
+rank_1_gre_diff <- Pred_view3[3,1] - Pred_view3[1,1]
+rank_2_gre_diff <- Pred_view3[6,1] - Pred_view3[4,1]
+rank_3_gre_diff <- Pred_view3[9,1] - Pred_view3[7,1]
+rank_4_gre_diff <- Pred_view3[12,1] - Pred_view3[10,1]
+diffs = c(rank_1_gre_diff, rank_2_gre_diff, rank_3_gre_diff, rank_4_gre_diff)
+diff_ranks = c(1, 2, 3, 4)
+diff_df <- data.frame(diff_ranks, diffs)
+diff_df <- rename(diff_df, Rank = diff_ranks, `Prediction difference` = diffs)
+diff_df %>% 
+  kable(align = 'c',caption = 'The prediction difference between people who scored high and people who scored low on the GRE by Undergraduate ranking') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+<br>
+
+Now looking at the predictions when GPAs are different and the GRE scores are consistent.  
+
+<br>
+
+<div align='center'>The mean GRE score used for all students in this fake data set is **`r signif(mean(df$gre), 3)`**
+
+</div>
+
+```{r, echo=FALSE}
+con_gre <- 
+  full_stats %>% 
+  filter(rating %in% c('Min.', 'Mean', 'Max.')) %>% 
+  pivot_wider(names_from = Var2,
+              values_from = value)
+con_gre$gre <- signif(mean(df$gre),3)
+con_gre$rating <- c('Low GPA', 'Average GPA', 'High GPA',
+                    'Low GPA', 'Average GPA', 'High GPA',
+                    'Low GPA', 'Average GPA', 'High GPA',
+                    'Low GPA', 'Average GPA', 'High GPA')
+con_gre$gpa <- round(as.numeric(con_gre$gpa), 2)
+con_gre$Person <- 1:12
+```
+
+```{r, echo=FALSE}
+con_gre[,c(5,1,2,4)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+<br>
+
+The results are very similar to the table above. The rank of the undergraduate institution appears to be the most influential predictor.
+
+```{r, echo=FALSE}
+Prediction4 <- 
+  predict(mod6,
+        con_gre,
+        type = 'response')
+
+Pred_view4 <- as.data.frame(round(Prediction4 * 100, 2))
+Pred_view4$Person <- 1:12
+Pred_view4 <- 
+  Pred_view4 %>% 
+  rename(Prediction = `round(Prediction4 * 100, 2)`)
+Pred_view4[,c(2,1)] %>% 
+  kable(align = 'c') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+<br><br>
+
+Looking at the prediction difference between the two analyses above.
+```{r, echo=FALSE}
+combined_preds <- data.frame(1:12,
+                             c(1,1,1,2,2,2,3,3,3,4,4,4),
+                             (round(Prediction3*100, 2)), 
+                             (round(Prediction4*100,2)))
+combined_preds <- rename(combined_preds, 
+                         Prediction_consistent_GPA = X.round.Prediction3...100..2..,
+                         Prediction_consistent_GRE = X.round.Prediction4...100..2..,
+                         Person = X1.12,
+                         Rank = c.1..1..1..2..2..2..3..3..3..4..4..4.)
+
+combined_preds %>% 
+  mutate(Difference = Prediction_consistent_GPA - Prediction_consistent_GRE) %>% 
+  kable(align = 'c', caption = 'A positive number indicates that the consistent GPA prediction is higher than the consistent GRE prediction') %>% 
+  kable_minimal(lightable_options = 'striped')
+```
+
+A t-test of these two predictions show no significant difference (p = 0.9387)
+
+```{r, echo=FALSE}
+Prediction_consistent_GPA = Prediction3
+Prediction_consistent_GRE = Prediction4
+```
+
+```{r, eval=FALSE}
+t.test(Prediction_consistent_GPA, y = Prediction_consistent_GRE)
+```
+
+<br>
+
+_____
+
+## Conclusions
+
+1. The rank of the undergraduate institution has the largest influence on whether a student will be accepted into a graduate school
+2. The influence of GRE scores and GPA are more influential in top-tier schools
+3. No significant differences were found when determining if GPA or GRE scores were more influential
+4. The discrete logistic models created here weren't very good at predicting student acceptance to graduate schools.
+
+
+
+
+###########################################################################################
