@@ -3,10 +3,11 @@ title: "Analysis of Graduate School Admissions"
 author: "Josh Leon - joshuarleon0123@gmail.com"
 date: "2022-10-26"
 output: 
-html_document:
-  toc: true
-  toc_depth: 3
-  toc_float: true
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float: true
 ---
 
 
@@ -38,7 +39,7 @@ df$admit <- as.logical(df$admit)
 
 ## Data Set
 A quick look at the data set:
-```{r, comment='-'}
+```{r, comment='-', echo=FALSE}
 df %>% glimpse()
 ```
 | Variable | Description |
