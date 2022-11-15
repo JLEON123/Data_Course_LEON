@@ -1,0 +1,150 @@
+---
+title: "Exam 3"
+author: "Josh Leon"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, fig.align='center')
+library(tidyverse)
+library(modelr)
+library(janitor)
+library(broom)
+library(kableExtra)
+```
+
+___
+
+## 1995 College Faculty Salary Data
+
+Taking a quick look at the dataset
+```{r, echo=FALSE}
+df <- read_csv("./FacultySalaries_1995.csv") %>% 
+  clean_names()
+df %>% glimpse()
+
+```
+The data is untidy. First,I'll make it tidy by making it combining the ranks (Assoc, Assist, and Full). Than, I'll remove any data that is not important to this analysis
+```{r, echo=FALSE}
+# Schools with the 'VIIB' tier are filtered out
+Salary_data <- 
+  df %>% 
+  rename(Assist = avg_assist_prof_salary,
+         Assoc = avg_assoc_prof_salary,
+         Full = avg_full_prof_salary) %>% 
+  pivot_longer(cols = c(Assist, Assoc, Full),
+               names_to = 'Rank',
+               values_to = 'Salary') %>% 
+  group_by(univ_name) %>% 
+  summarize(State = state,
+            Tier = tier,
+            Rank = Rank,
+            Salary = Salary
+            ) %>% 
+  filter(Tier != 'VIIB')
+
+# Making the Tier and Rank variables factors
+Salary_data$Tier <- as.factor(Salary_data$Tier)
+Salary_data$Rank <- as.factor(Salary_data$Rank)
+
+Salary_data %>% glimpse()
+
+
+
+```
+
+
+Plotting this data as a boxplot
+```{r}
+Box <- 
+  Salary_data %>% 
+  ggplot(aes(x = Rank, y = Salary, fill = Rank)) +
+  geom_boxplot() +
+  facet_wrap(~Tier) +
+  theme_minimal() +
+  theme(strip.background = element_blank(),
+        axis.text.x = element_text(angle = 45))
+
+Box
+```
+
+### ANOVA results
+```{r}
+ANOVA <- aov(Salary ~ State + Tier + Rank, data = Salary_data)
+tidy(ANOVA)
+```
+
+___
+
+## UVU + Young Living Juniper Oil Data
+
+This dataset contains information on chemical content concentration of essential oils from trees. Also included is the amount of time in years that has passed since the tree was burnt in a fire.  
+
+Taking a quick look at the dataset
+```{r, echo=FALSE}
+df2 <- read_csv("./Juniper_Oils.csv")
+df2 %>% glimpse()
+```
+For this analysis, I only care about the chemicals, their concentrations, and the years since a burn. The new tidy dataset is shown below.
+```{r, echo=FALSE}
+chemicals <- c("alpha-pinene","para-cymene","alpha-terpineol","cedr-9-ene","alpha-cedrene","beta-cedrene","cis-thujopsene","alpha-himachalene","beta-chamigrene","cuparene","compound 1","alpha-chamigrene","widdrol","cedrol","beta-acorenol","alpha-acorenol","gamma-eudesmol","beta-eudesmol","alpha-eudesmol","cedr-8-en-13-ol","cedr-8-en-15-ol","compound 2","thujopsenal")
+
+Oil_data <- 
+  df2 %>% 
+  pivot_longer(cols = chemicals,
+               names_to = 'ChemicalID',
+               values_to = 'Concentration') %>% 
+  group_by(ChemicalID) %>% 
+  summarize(ChemicalID = as.factor(ChemicalID),
+            Concentration = Concentration,
+            YearsSinceBurn = YearsSinceBurn) %>% 
+  unique.data.frame()
+
+Oil_data %>% glimpse()
+  
+```
+
+Visualizing the concentration levels for each chemical as time from the burn increases
+```{r}
+Oil_plot <- 
+  Oil_data %>% 
+  ggplot(aes(x = YearsSinceBurn, y = Concentration)) +
+  geom_smooth(method = 'loess') +
+  facet_wrap(~ChemicalID, scales = "free_y") +
+  theme_minimal() +
+  theme(strip.background = element_blank())
+
+Oil_plot
+```
+
+### Significant results
+The table below shows the chemicals whose concentrations are significantly affected by the years since the burn. This was determined by using a generalized linear model,
+```{r}
+mod <- 
+  glm(data = Oil_data,
+      formula = Concentration ~ ChemicalID*YearsSinceBurn)
+
+# To try and match the example, I had to do an extra step
+# When using just tidy(), the column name 'ChemicalID' would appear before every chemical
+summary <- 
+  tidy(mod) %>% 
+  filter(p.value < 0.05)
+
+summary$term <- str_remove_all(pattern = 'ChemicalID',string = summary$term)
+
+summary %>% kable() %>% kable_minimal()
+```
+
+<br><br><br><br><br>
+
+___
+
+```{r}
+# Using just tidy for the summary
+tidy(mod) %>% 
+  filter(p.value < 0.05)
+```
+
+
+
+
